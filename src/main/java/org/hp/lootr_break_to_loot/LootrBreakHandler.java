@@ -1,68 +1,47 @@
 package org.hp.lootr_break_to_loot;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Containers;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import noobanidus.mods.lootr.api.blockentity.ILootBlockEntity;
-import noobanidus.mods.lootr.config.ConfigManager;
-import noobanidus.mods.lootr.data.DataStorage;
-import noobanidus.mods.lootr.data.SpecialChestInventory;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.LootableContainerBlockEntity;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.ItemScatterer;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
+import net.zestyblaze.lootr.api.blockentity.ILootBlockEntity;
+import net.zestyblaze.lootr.config.LootrModConfig;
+import net.zestyblaze.lootr.data.DataStorage;
+import net.zestyblaze.lootr.data.SpecialChestInventory;
 import org.hp.lootr_break_to_loot.network.NetworkHandler;
 
 public final class LootrBreakHandler {
-    // 在 Lootr 的破坏限制处理之前接管非潜行破坏。
-    @SubscribeEvent(priority = EventPriority.HIGHEST, receiveCanceled = true)
-    public void onBlockBreak(BlockEvent.BreakEvent event) {
-        Player player = event.getPlayer();
-        if (!(event.getLevel() instanceof Level level)
-                || level.isClientSide()
-                || player.isShiftKeyDown()
-                || player.isSpectator()
-                || ConfigManager.DISABLE_BREAK.get()
-                || ConfigManager.ENABLE_BREAK.get()) {
-            return;
-        }
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return;
+    private LootrBreakHandler() {
+    }
+
+    public static boolean handle(ServerPlayerEntity player, BlockPos pos) {
+        World world = player.getWorld();
+        if (world.isClient || !(world instanceof ServerWorld serverWorld) || player.isSneaking() || player.isSpectator()
+                || LootrModConfig.get().breaking.enable_break || LootrModConfig.isBreakDisabled()) {
+            return false;
         }
 
-        BlockPos pos = event.getPos();
-        BlockEntity blockEntity = level.getBlockEntity(pos);
+        BlockEntity blockEntity = world.getBlockEntity(pos);
         if (!(blockEntity instanceof ILootBlockEntity lootBlockEntity)
-                || !(blockEntity instanceof RandomizableContainerBlockEntity lootContainer)) {
-            return;
+                || !(blockEntity instanceof LootableContainerBlockEntity lootContainer)) {
+            return false;
         }
 
-        // 通过 Lootr 的 DataStorage 获取当前玩家的独立战利品库存。
-        SpecialChestInventory inventory = DataStorage.getInventory(
-                level,
-                lootBlockEntity.getTileId(),
-                pos,
-                serverPlayer,
-                lootContainer,
-                lootBlockEntity::unpackLootTable
-        );
+        SpecialChestInventory inventory = DataStorage.getInventory(world, lootBlockEntity.getTileId(), pos, player,
+                lootContainer, lootBlockEntity::unpackLootTable);
         if (inventory == null) {
-            return;
+            return false;
         }
 
-        // 取消原版移除方块流程，使 Lootr 箱子保留在原处。
-        event.setCanceled(true);
-
-        // 同步 Lootr 的开启状态和开启者记录，让当前玩家看到已开启外观。
-        lootBlockEntity.getOpeners().add(serverPlayer.getUUID());
-        blockEntity.setChanged();
-        NetworkHandler.sendLootrOpened(serverPlayer, pos);
-
-        // 使用原版容器掉落算法，在箱子位置生成 ItemEntity，并消耗该玩家的独立库存。
-        Containers.dropContents(level, pos, inventory);
-        inventory.setChanged();
+        lootBlockEntity.getOpeners().add(player.getUuid());
+        blockEntity.markDirty();
+        lootBlockEntity.updatePacketViaState();
+        NetworkHandler.sendLootrOpened(player, pos);
+        ItemScatterer.spawn(serverWorld, pos, inventory);
+        inventory.markDirty();
+        return true;
     }
 }
