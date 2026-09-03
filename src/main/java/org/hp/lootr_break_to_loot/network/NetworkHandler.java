@@ -1,41 +1,20 @@
 package org.hp.lootr_break_to_loot.network;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
-import org.hp.lootr_break_to_loot.Lootr_break_to_loot;
-
-import java.util.Optional;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.PacketByteBuf;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.BlockPos;
 
 public final class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "1";
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(Lootr_break_to_loot.MODID, "main"),
-            () -> PROTOCOL_VERSION,
-            PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals
-    );
+    public static final Identifier LOOTR_OPENED_ID = new Identifier("lootr_break_to_loot", "lootr_opened");
 
     private NetworkHandler() {
     }
 
-    // 注册服务端向客户端同步 Lootr 开启状态的数据包。
-    public static void registerMessages() {
-        CHANNEL.registerMessage(
-                0,
-                LootrOpenedPacket.class,
-                LootrOpenedPacket::encode,
-                LootrOpenedPacket::decode,
-                LootrOpenedPacket::handle,
-                Optional.of(NetworkDirection.PLAY_TO_CLIENT)
-        );
-    }
-
-    public static void sendLootrOpened(ServerPlayer player, BlockPos pos) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new LootrOpenedPacket(pos));
+    public static void sendLootrOpened(ServerPlayerEntity player, BlockPos pos) {
+        PacketByteBuf buffer = new PacketByteBuf(io.netty.buffer.Unpooled.buffer());
+        buffer.writeBlockPos(pos);
+        ServerPlayNetworking.send(player, LOOTR_OPENED_ID, buffer);
     }
 }
