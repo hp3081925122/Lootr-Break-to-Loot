@@ -4,11 +4,11 @@
   "package": "org.hp.lootr_break_to_loot.mixin",
   "compatibilityLevel": "JAVA_17",
   "refmap": "lootr_break_to_loot.refmap.json",
-  "mixins": [],
-  "client": [],
-  "server": [
+  "mixins": [
     "ServerPlayerInteractionManagerMixin"
   ],
+  "client": [],
+  "server": [],
   "injectors": {
     "defaultRequire": 1
   }
