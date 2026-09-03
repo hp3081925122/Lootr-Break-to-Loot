@@ -5,11 +5,11 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "lootr_break_to_loot.refmap.json",
   "mixins": [
+    "ServerPlayerInteractionManagerMixin"
   ],
   "client": [
   ],
   "server": [
-    "ServerPlayerInteractionManagerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
