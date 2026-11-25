@@ -1,23 +1,22 @@
 package org.hp.lootr_break_to_loot;
 
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import org.hp.lootr_break_to_loot.network.NetworkHandler;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.Event;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.minecraft.resources.ResourceLocation;
 
-@Mod(Lootr_break_to_loot.MODID)
-public class Lootr_break_to_loot {
+public final class Lootr_break_to_loot implements ModInitializer {
     public static final String MODID = "lootr_break_to_loot";
 
-    public Lootr_break_to_loot() {
-        IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        modEventBus.addListener(this::commonSetup);
-        MinecraftForge.EVENT_BUS.register(new LootrBreakHandler());
-    }
-
-    private void commonSetup(final FMLCommonSetupEvent event) {
-        event.enqueueWork(NetworkHandler::registerMessages);
+    @Override
+    public void onInitialize() {
+        LootrBreakHandler handler = new LootrBreakHandler();
+        ResourceLocation earlyPhase = ResourceLocation.fromNamespaceAndPath(MODID, "early");
+        PlayerBlockBreakEvents.BEFORE.addPhaseOrdering(earlyPhase, Event.DEFAULT_PHASE);
+        PlayerBlockBreakEvents.BEFORE.register(earlyPhase, handler::beforeBlockBreak);
+        ServerTickEvents.START_SERVER_TICK.register(handler::onServerTick);
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> handler.clearPending());
     }
 }
