@@ -1,6 +1,7 @@
 modLoader = "javafml"
 loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
+displayTest = "IGNORE_SERVER_VERSION"
 
 [[mods]]
 modId = "${mod_id}"
@@ -26,6 +27,6 @@ side = "BOTH"
 [[dependencies."${mod_id}"]]
 modId = "lootr"
 mandatory = true
-versionRange = "[0,)"
-ordering = "NONE"
+versionRange = "[0.0.1,)"
+ordering = "AFTER"
 side = "BOTH"
